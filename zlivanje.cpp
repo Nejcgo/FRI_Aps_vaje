@@ -1,68 +1,63 @@
 #include <cmath>
-#include <cstddef>
-#include <cstdint>
 #include <iostream>
+#include <system_error>
 #include <vector>
 #include <algorithm>
-#include <string>
 
 using namespace std;
 
-vector<int> mergeSort(const vector<vector<int>>& lists) {
+void mergeSort(vector<int>& list, vector<int>& indices, vector<int>& sizes, int k) {
     vector<int> final;
-    vector<int> checks;
+    
+    vector<int> queue(k);
+    vector<int> left(k);
 
-    int vectors = lists.size();
+    vector<int> newIndices;
+    vector<int> newSizes;
 
-    checks.assign(lists.size(), 0);
-
-    int size = 0;
-    for (int i = 0; i < vectors; i++) {
-        size += lists[i].size();
-    }
-
-    for (int i = 0; i < size; i++) {
-        int smallest = INT32_MAX;
-        int indexOfVector;
-        for (int j = 0; j < vectors; j++) {
-            if (lists[j].size() <= checks[j]) continue;
-            if (lists[j][checks[j]] < smallest) {
-                smallest = lists[j][checks[j]];
-                indexOfVector = j;
+    for (int i = 0; i < indices.size(); i += k) {
+        if (i+k < indices.size()) {
+            for (int j = 0; j < k; j++) {
+                queue[j] = indices[i + j];
+            }
+        } else {
+            queue.clear();
+            for (int j = 0; i+j < indices.size(); j++) {
+                queue.push_back(indices[i + j]);
             }
         }
 
-        checks[indexOfVector]++;
-        final.push_back(smallest);
-    }
+        // set sizes
+        /*for (int j = 0; j < queue.size(); j++) {
+            left[j] = sizes[queue[j]];
+        }*/
 
-    return final;
-}
+        newIndices.push_back(queue[0]);
+        newSizes.push_back(queue.back() - queue[0] + sizes[i + queue.size() - 1]);
 
-vector<vector<int>> splitIntoSubLists(const vector<int>& list) {
-    vector<vector<int>> final;
-    vector<int> temp;
-
-    for (int i = 0; i < list.size(); i++) {
-        if (temp.size() != 0 && temp.back() > list[i]) {
-            final.push_back(temp);
-            temp.clear();
+        for (int j = 1; j < queue.size(); j++) {
+            inplace_merge(list.begin()+queue[0], list.begin()+queue[j], list.begin()+queue[j]+sizes[i+j]);
         }
-
-        temp.push_back(list[i]);
     }
 
-    if (!temp.empty()) final.push_back(temp);
-
-    return final;
+    indices = newIndices;
+    sizes = newSizes;
 }
 
-vector<vector<vector<int>>> groupIntoSubGroups(const vector<vector<int>>& lists, int groupSize) {
-    vector<vector<vector<int>>> final((int) ceil(lists.size() / (double) groupSize));
+vector<int> splitIntoSubLists(const vector<int>& list, vector<int>& sizes) {
+    vector<int> final;
+    final.push_back(0);
+    int prev = 0;
     
-    for (int i = 0; i < lists.size(); i++) {
-        final[i / groupSize].push_back(lists[i]);
+    for (int i = 1; i < list.size(); i++) {
+        if (list[i] < list[i-1]) {
+            final.push_back(i);
+            sizes.push_back(i-prev);
+            prev = i;
+        }  
     }
+
+    sizes.push_back(list.size() - prev);
 
     return final;
 }
@@ -76,6 +71,11 @@ int main() {
         cin >> list[i];
     }
 
+    if (list.size() == 0) return 0;
+
+    vector<int> sizes;
+    vector<int> splitList = splitIntoSubLists(list, sizes);
+
     for (int repeat = 0; repeat < a; repeat++) {
         /*for (int i = 0; i < list.size(); i++) {
             cout << list[i];
@@ -83,23 +83,13 @@ int main() {
         }
         cout << "\n";*/
 
-        vector<vector<int>> splitList = splitIntoSubLists(list);
-
-        vector<vector<vector<int>>> spliterList = groupIntoSubGroups(splitList, k);
-
-        list.clear();
-
-        for (int i = 0; i < spliterList.size(); i++) {
-            vector<int> part = mergeSort(spliterList[i]);
-            list.insert(list.end(), part.begin(), part.end());
-        }
+        mergeSort(list, splitList, sizes, k);
     }
 
-    for (int i = 0; i < list.size(); i++) {
-        cout << list[i];
-        if (i != list.size() - 1) cout << " ";
+    cout << list[0];
+    for (int i = 1; i < list.size(); i++) {
+        cout<< " " << list[i];
     }
-
     cout << "\n";
 
     return 0;
